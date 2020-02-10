@@ -1,0 +1,33 @@
+syntax ="proto3";
+package pb;
+
+message Error {
+    int32 code = 1;
+    string desciption = 2;
+}
+
+message User {
+    string token = 1;
+    string username = 2;
+}
+
+message Register {
+    string username = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message RegisterAck {
+    string token = 1;
+    Error error = 2;
+}
+
+message Login {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginAck {
+    User user = 1;
+    Error error = 2;
+}

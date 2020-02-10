@@ -1,0 +1,13 @@
+debug: true
+port: 9000
+readtimeout: 300s
+idletimeout: 300s
+writetimeout: 5s
+
+dbaddr: "mongodb://localhost:27017"
+dbname: "goblin"
+dbreadtimeout: 5s
+dbwritetimeout: 5s
+
+tokenexpiretime: 60s
+tokenjwtkey: "goblin-rule-the-world"

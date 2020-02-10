@@ -21,8 +21,11 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/sleep2death/goblin/cmd"
+import (
+	"github.com/sleep2death/goblin/cmd/goblin/cmd"
+)
 
 func main() {
-  cmd.Execute()
+	cmd.Execute()
+	// time.Sleep(time.Second * 10)
 }
