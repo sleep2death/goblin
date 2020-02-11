@@ -35,8 +35,7 @@ func TestRegisterHandler(t *testing.T) {
 	res, _ := gotham.ReadFrame(bufr)
 
 	var resp pb.RegisterAck
-	proto.Unmarshal(res.Data, &resp)
-	log.Println(resp.GetError().GetMessage())
-
+	proto.Unmarshal(res.Data(), &resp)
+	log.Println(resp.GetError().GetDescription())
 	time.Sleep(time.Millisecond * 5)
 }

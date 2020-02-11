@@ -2,7 +2,6 @@ package goblin
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,20 +15,28 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.uber.org/zap"
 )
 
 var (
+	logger *zap.Logger
 	router *gotham.Router
 	server *gotham.Server
 )
 
 // Serve the clients...
 func Serve() {
-	readConfig()
+	// create logger
+	logger, _ = zap.NewProduction()
+	defer logger.Sync()
+
+	if err := readConfig(); err != nil {
+		logger.Fatal(err.Error())
+	}
 
 	db, err := initDB(viper.GetString("dbaddr"), viper.GetString("dbname"))
 	if err != nil {
-		log.Fatalf("can not connect to mongodb: %s", err)
+		logger.Fatal(err.Error())
 	}
 
 	// if debug is false, set the server's mode to "release"
@@ -52,7 +59,7 @@ func Serve() {
 	go func() {
 		// service connections
 		if err := gotham.ListenAndServe(addr, router); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			logger.Fatal(err.Error())
 		}
 	}()
 
@@ -65,12 +72,12 @@ func Serve() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	if err := server.Shutdown(); err != nil {
-		log.Fatal("Server Shutdown:", err)
+		logger.Fatal(err.Error())
 	}
 }
 
 // read config file, and set the default args of the server
-func readConfig() {
+func readConfig() error {
 	// you can comment these default settings, if you had written a config file.
 	// viper.SetDefault("port", 9000)
 	// viper.SetDefault("readtimeout", time.Minute*5)  // 5 minutes
@@ -90,16 +97,17 @@ func readConfig() {
 	viper.AddConfigPath(".")
 
 	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {
-		log.Printf("can not load the config file: %s \n", err)
-	}
+	return err
+	//if err != nil {
+	//log.Printf("can not load the config file: %s \n", err)
+	//}
 }
 
 func initRouter(db *mongo.Database) {
 	router.Handle("pb.Login", getLoginHandler(db))
 	router.Handle("pb.Register", getRegisterHandler(db))
 	router.NoRoute(func(c *gotham.Context) {
-		log.Println("no router, we are fucked")
+		logger.Error("no router, we are fucked")
 	})
 }
 
@@ -119,6 +127,6 @@ func initDB(addr string, dbname string) (*mongo.Database, error) {
 		return nil, err
 	}
 
-	log.Println("connected to mongodb")
+	logger.Info("connected to mongodb.")
 	return client.Database(dbname), nil
 }

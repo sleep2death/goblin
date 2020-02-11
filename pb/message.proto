@@ -3,7 +3,7 @@ package pb;
 
 message Error {
     int32 code = 1;
-    string desciption = 2;
+    string description = 2;
 }
 
 message User {

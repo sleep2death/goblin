@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,31 +26,28 @@ const (
 
 var (
 	MsgUserAlreadyExisted = &pb.Error{
-		Code:       http.StatusConflict,
-		Desciption: "Username already existed.",
+		Code:        http.StatusConflict,
+		Description: "username already exists.",
 	}
 	MsgInternalServerError = &pb.Error{
-		Code:       http.StatusInternalServerError,
-		Desciption: "Oops...some wrong",
+		Code:        http.StatusInternalServerError,
+		Description: "oops...something went wrong.",
 	}
 )
 
 func getRegisterHandler(db *mongo.Database) gotham.HandlerFunc {
+	jwtKey := viper.GetString("tokenjwtkey")
+	if len(jwtKey) == 0 {
+		logger.Fatal("jwtkey not found.")
+	}
 	return func(c *gotham.Context) {
 		var req pb.Register
 		var resp *pb.RegisterAck = &pb.RegisterAck{}
-
-		jwtKey := viper.GetString("tokenjwtkey")
-		if len(jwtKey) == 0 {
-			// c.AbortWithStatus(http.StatusInternalServerError)
-			resp.Error = MsgInternalServerError
-			c.Write(resp)
-			return
-		}
 		// Unmarshal the register request message.
-		if err := proto.Unmarshal(c.Data(), &req); err != nil {
+		if err := proto.Unmarshal(c.Request.Data(), &req); err != nil {
 			resp.Error = MsgInternalServerError
-			c.Write(resp)
+			AbortWithMessage(c, resp)
+			logger.Error("can't unmarshal the packet.")
 			return
 		}
 
@@ -57,7 +55,7 @@ func getRegisterHandler(db *mongo.Database) gotham.HandlerFunc {
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.GetPassword()), bcrypt.DefaultCost)
 		if err != nil {
 			resp.Error = MsgInternalServerError
-			c.Write(resp)
+			AbortWithMessage(c, resp)
 			return
 		}
 
@@ -82,18 +80,18 @@ func getRegisterHandler(db *mongo.Database) gotham.HandlerFunc {
 				tokenStr, err := token.SignedString(jwtKey)
 				if err != nil {
 					resp.Error = MsgInternalServerError
-					c.Write(resp)
+					AbortWithMessage(c, resp)
 					return
 				}
-				// log.Println(tokenStr)
 				c.Write(&pb.RegisterAck{Token: tokenStr})
 			} else {
 				resp.Error = MsgInternalServerError
-				c.Write(resp)
+				AbortWithMessage(c, resp)
+				return
 			}
 		} else {
 			resp.Error = MsgUserAlreadyExisted
-			c.Write(resp)
+			AbortWithMessage(c, resp)
 		}
 	}
 }
