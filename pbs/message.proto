@@ -1,14 +1,9 @@
 syntax ="proto3";
-package pb;
+package pbs;
 
 message Error {
     int32 code = 1;
     string description = 2;
-}
-
-message User {
-    string token = 1;
-    string username = 2;
 }
 
 message Register {
@@ -28,6 +23,19 @@ message Login {
 }
 
 message LoginAck {
-    User user = 1;
+    string token = 1;
     Error error = 2;
+}
+
+message User {
+    string username = 1;
+}
+
+message Initial {
+    string token = 1;
+}
+
+message InitialAck {
+    User user = 1;
+    Error error = 3;
 }

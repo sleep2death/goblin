@@ -3,15 +3,13 @@ package goblin
 import (
 	"context"
 	"net/http"
-	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/sleep2death/gotham"
 	"github.com/spf13/viper"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -56,24 +54,23 @@ func Serve() {
 	}
 
 	addr := ":" + strconv.Itoa(viper.GetInt("port"))
-	go func() {
-		// service connections
-		if err := gotham.ListenAndServe(addr, router); err != nil && err != http.ErrServerClosed {
-			logger.Fatal(err.Error())
-		}
-	}()
+	// go func() {
+	if err := gotham.ListenAndServe(addr, router); err != nil && err != http.ErrServerClosed {
+		logger.Fatal(err.Error())
+	}
+	// }()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
-	quit := make(chan os.Signal)
+	// quit := make(chan os.Signal)
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	if err := server.Shutdown(); err != nil {
-		logger.Fatal(err.Error())
-	}
+	// signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	// <-quit
+	// if err := server.Shutdown(); err != nil {
+	// 	logger.Fatal(err.Error())
+	// }
 }
 
 // read config file, and set the default args of the server
@@ -83,12 +80,10 @@ func readConfig() error {
 	// viper.SetDefault("readtimeout", time.Minute*5)  // 5 minutes
 	// viper.SetDefault("idletimeout", time.Minute*5)  // 5 minutes
 	// viper.SetDefault("writetimeout", time.Second*1) // 1 second
-
 	// viper.SetDefault("dbname", "goblin")
 	// viper.SetDefault("dbaddr", "mongodb://localhost:27017")
 	// viper.SetDefault("dbreadtimeout", time.Second*5)
 	// viper.SetDefault("dbwritetimeout", time.Second*5)
-
 	//viper.SetDefault("tokenexpiretime", time.Hour*24)
 
 	viper.SetConfigName(".goblin")
@@ -104,8 +99,8 @@ func readConfig() error {
 }
 
 func initRouter(db *mongo.Database) {
-	router.Handle("pb.Login", getLoginHandler(db))
-	router.Handle("pb.Register", getRegisterHandler(db))
+	router.Handle("pbs.Login", getLoginHandler(db))
+	router.Handle("pbs.Register", getRegisterHandler(db))
 	router.NoRoute(func(c *gotham.Context) {
 		logger.Error("no router, we are fucked")
 	})
@@ -128,5 +123,20 @@ func initDB(addr string, dbname string) (*mongo.Database, error) {
 	}
 
 	logger.Info("connected to mongodb.")
+
+	db := client.Database(dbname)
+	// ensure username in the index
+	col := db.Collection(UserCollection)
+	mod := mongo.IndexModel{
+		Keys: bson.M{
+			"username": 1, // index in ascending order
+		},
+		Options: options.Index().SetUnique(true),
+	}
+	opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
+	if _, err = col.Indexes().CreateOne(ctx, mod, opts); err != nil {
+		return nil, err
+	}
+
 	return client.Database(dbname), nil
 }
