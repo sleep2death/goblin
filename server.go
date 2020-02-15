@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/sleep2death/goblin/handler"
 	"github.com/sleep2death/goblin/utils"
 	"github.com/sleep2death/gotham"
 	"github.com/spf13/viper"
 
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
@@ -25,13 +25,15 @@ func Serve() {
 	defer logger.Sync()
 
 	if err := utils.InitConfig(); err != nil {
-		logger.Fatal(err.Error())
+		logger.Error(err.Error())
 	}
 
 	db, err := utils.InitDB(viper.GetString("dbaddr"), viper.GetString("dbname"))
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
+
+	logger.Info("connected to the db")
 
 	// if debug is false, set the server's mode to "release"
 	if viper.GetBool("debug") == false {
@@ -40,7 +42,7 @@ func Serve() {
 
 	// create the router
 	router = gotham.New()
-	initRouter(db)
+	handler.InitHandlers(router, db, logger)
 
 	// create the server
 	server = &gotham.Server{
@@ -67,12 +69,4 @@ func Serve() {
 	// if err := server.Shutdown(); err != nil {
 	// 	logger.Fatal(err.Error())
 	// }
-}
-
-func initRouter(db *mongo.Database) {
-	router.Handle("pbs.Login", getLoginHandler(db))
-	router.Handle("pbs.Register", getRegisterHandler(db))
-	router.NoRoute(func(c *gotham.Context) {
-		logger.Error("no router, we are fucked")
-	})
 }

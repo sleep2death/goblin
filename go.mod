@@ -5,8 +5,8 @@ go 1.13
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/golang/protobuf v1.3.3
-	github.com/google/uuid v1.1.1 // indirect
 	github.com/lithammer/shortuuid v3.0.0+incompatible
+	github.com/lithammer/shortuuid/v3 v3.0.4
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/sleep2death/gotham v0.0.0-20200214024526-c4a62b274ec8

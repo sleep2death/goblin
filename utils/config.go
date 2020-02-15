@@ -21,6 +21,7 @@ func InitConfig() error {
 	viper.SetConfigName(".goblin")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("$HOME")
+	viper.AddConfigPath("../")
 	viper.AddConfigPath(".")
 	return viper.ReadInConfig() // Find and read the config file
 }

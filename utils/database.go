@@ -39,8 +39,7 @@ func InitDB(addr string, dbname string) (*mongo.Database, error) {
 		},
 		Options: options.Index().SetUnique(true),
 	}
-	opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
-	if _, err = col.Indexes().CreateOne(ctx, mod, opts); err != nil {
+	if _, err = col.Indexes().CreateOne(ctx, mod, nil); err != nil {
 		return nil, err
 	}
 
