@@ -54,7 +54,7 @@ func getRegisterHandler(db *mongo.Database) gotham.HandlerFunc {
 		var req pbs.Register
 		var resp *pbs.RegisterAck = &pbs.RegisterAck{}
 		// Unmarshal the register request message.
-		if err := proto.Unmarshal(c.Request.Data(), &req); err != nil {
+		if err := proto.Unmarshal(c.Request.Data, &req); err != nil {
 			resp.Error = MsgInternalServerError
 			AbortWithMessage(c, resp)
 			logger.Error(err.Error())
@@ -131,7 +131,7 @@ func getLoginHandler(db *mongo.Database) gotham.HandlerFunc {
 		var req pbs.Login
 		var resp *pbs.LoginAck = &pbs.LoginAck{}
 		// Unmarshal the register request message.
-		if err := proto.Unmarshal(c.Request.Data(), &req); err != nil {
+		if err := proto.Unmarshal(c.Request.Data, &req); err != nil {
 			resp.Error = MsgInternalServerError
 			AbortWithMessage(c, resp)
 			logger.Error(err.Error())

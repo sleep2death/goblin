@@ -40,7 +40,7 @@ func TestRegisterHandler(t *testing.T) {
 
 	res, _ := gotham.ReadFrame(bufr)
 	var resp pbs.RegisterAck
-	proto.Unmarshal(res.Data(), &resp)
+	proto.Unmarshal(res.Data, &resp)
 	assert.Nil(t, resp.GetError())
 
 	time.Sleep(time.Millisecond * 5)
@@ -50,10 +50,18 @@ func TestRegisterHandler(t *testing.T) {
 	bufw.Flush()
 
 	res, _ = gotham.ReadFrame(bufr)
-	proto.Unmarshal(res.Data(), &resp)
+	proto.Unmarshal(res.Data, &resp)
 	assert.Equal(t, MsgUserAlreadyExisted.GetDescription(), resp.GetError().GetDescription())
 
 	// login with username and password we just registed.
+	conn, err = net.Dial("tcp", ":9001")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bufw = bufio.NewWriter(conn)
+	bufr = bufio.NewReader(conn)
+
 	lmsg := &pbs.Login{
 		Username: u,
 		Password: "password!",
@@ -61,8 +69,8 @@ func TestRegisterHandler(t *testing.T) {
 	gotham.WriteFrame(bufw, lmsg)
 	bufw.Flush()
 
-	res, _ = gotham.ReadFrame(bufr)
+	res, err = gotham.ReadFrame(bufr)
 	var lresp pbs.LoginAck
-	proto.Unmarshal(res.Data(), &lresp)
+	proto.Unmarshal(res.Data, &lresp)
 	assert.Nil(t, lresp.GetError())
 }
