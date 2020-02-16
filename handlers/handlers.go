@@ -1,4 +1,4 @@
-package handler
+package handlers
 
 import (
 	"context"
@@ -26,6 +26,11 @@ var (
 	logger   *zap.Logger
 	database *mongo.Database
 
+	MsgRouterNotFound = &pbs.Error{
+		Code:        http.StatusNotFound,
+		Description: "router not found.",
+	}
+
 	MsgUserAlreadyExisted = &pbs.Error{
 		Code:        http.StatusConflict,
 		Description: "username already exists.",
@@ -45,9 +50,9 @@ var (
 
 	ErrUserNameAlreadyExisted = errors.New("username already existed.")
 
-	jwtKey      string
-	tokenExpire time.Duration
-	dbTimeout   time.Duration
+	jwtKey        string
+	tokenExpire   time.Duration
+	dbReadTimeout time.Duration
 )
 
 func InitHandlers(router *gotham.Router, db *mongo.Database, log *zap.Logger) {
@@ -60,18 +65,18 @@ func InitHandlers(router *gotham.Router, db *mongo.Database, log *zap.Logger) {
 	}
 	tokenExpire = viper.GetDuration("tokenexpiretime")
 	if tokenExpire == 0 {
-		logger.Fatal("token-expire-time not found.")
+		logger.Fatal("tokenexpiretime not found.")
 	}
-	dbTimeout = viper.GetDuration("dbreadtimeout")
-	if dbTimeout == 0 {
-		logger.Fatal("db execution timeout not found.")
+	dbReadTimeout = viper.GetDuration("dbreadtimeout")
+	if dbReadTimeout == 0 {
+		logger.Fatal("dbreadtimeout not found.")
 	}
 
 	router.Handle("pbs.Login", loginHandler)
 	router.Handle("pbs.Register", registerHandler)
 	router.NoRoute(func(c *gotham.Context) {
-		logger.Error("no router, we are fucked")
-		c.Abort()
+		logger.Warn("router not found.", zap.String("typeurl", c.Request.TypeURL))
+		abortWithMessage(c, MsgRouterNotFound)
 	})
 }
 
@@ -87,7 +92,7 @@ func dbRegister(username, email, password string) (string, error) {
 	opts := options.FindOneAndUpdate().SetUpsert(true)
 	filter := bson.M{"username": username}
 	update := bson.M{"$setOnInsert": bson.M{"username": username, "email": email, "password": password}}
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbReadTimeout)
 	defer cancel()
 	res := database.Collection(UserCollection).FindOneAndUpdate(ctx, filter, update, opts)
 
@@ -116,7 +121,7 @@ func dbRegister(username, email, password string) (string, error) {
 func dbLogin(username, password string) (string, error) {
 	opts := options.FindOne().SetProjection(bson.M{"password": 1})
 	filter := bson.M{"username": username}
-	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbReadTimeout)
 	defer cancel()
 	res := database.Collection(UserCollection).FindOne(ctx, filter, opts)
 	if err := res.Err(); err != nil {

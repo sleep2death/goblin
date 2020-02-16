@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/sleep2death/goblin/handler"
+	"github.com/sleep2death/goblin/handlers"
+	"github.com/sleep2death/goblin/middlewares"
 	"github.com/sleep2death/goblin/utils"
 	"github.com/sleep2death/gotham"
 	"github.com/spf13/viper"
@@ -42,6 +43,7 @@ func Serve() {
 
 	// create the router
 	router = gotham.New()
+	router.Use(middlewares.Recovery())
 	handler.InitHandlers(router, db, logger)
 
 	// create the server

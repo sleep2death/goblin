@@ -1,4 +1,4 @@
-package handler
+package handlers
 
 import (
 	"github.com/golang/protobuf/proto"
@@ -14,31 +14,25 @@ func registerHandler(c *gotham.Context) {
 	var resp *pbs.RegisterAck = &pbs.RegisterAck{}
 	// Unmarshal the register request message.
 	if err := proto.Unmarshal(c.Request.Data, &req); err != nil {
-		resp.Error = MsgInternalServerError
-		abortWithMessage(c, resp)
-		logger.Error(err.Error())
-		return
+		panic(err)
 	}
 
 	// TODO: username/password/email validation
 	// Hash password from request.
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
-		resp.Error = MsgInternalServerError
-		abortWithMessage(c, resp)
-		logger.Error(err.Error())
-		return
+		panic(err)
 	}
 
 	token, err := dbRegister(req.GetUsername(), req.GetEmail(), string(hash))
 	if err != nil {
-		logger.Error(err.Error())
 		if err == ErrUserNameAlreadyExisted {
 			resp.Error = MsgUserAlreadyExisted
+			abortWithMessage(c, resp)
+			logger.Warn(err.Error())
 		} else {
-			resp.Error = MsgInternalServerError
+			panic(err)
 		}
-		abortWithMessage(c, resp)
 	}
 
 	resp.Token = token
@@ -50,10 +44,7 @@ func loginHandler(c *gotham.Context) {
 	var resp *pbs.LoginAck = &pbs.LoginAck{}
 	// Unmarshal the register request message.
 	if err := proto.Unmarshal(c.Request.Data, &req); err != nil {
-		resp.Error = MsgInternalServerError
-		abortWithMessage(c, resp)
-		logger.Error(err.Error())
-		return
+		panic(err)
 	}
 
 	token, err := dbLogin(req.GetUsername(), req.GetPassword())
@@ -61,11 +52,11 @@ func loginHandler(c *gotham.Context) {
 		if err == mongo.ErrNoDocuments ||
 			err == bcrypt.ErrMismatchedHashAndPassword {
 			resp.Error = MsgLoginFailed
+			abortWithMessage(c, resp)
+			logger.Warn(err.Error())
 		} else {
-			resp.Error = MsgInternalServerError
+			panic(err)
 		}
-		abortWithMessage(c, resp)
-		logger.Error(err.Error())
 	}
 
 	resp.Token = token

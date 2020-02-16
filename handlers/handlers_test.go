@@ -1,11 +1,10 @@
-package handler
+package handlers
 
 import (
 	"sync"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lithammer/shortuuid/v3"
 	"github.com/sleep2death/goblin/pbs"
 	"github.com/sleep2death/goblin/utils"
 	"github.com/sleep2death/gotham"
@@ -41,6 +40,7 @@ func initTest() {
 
 	// create the router
 	router = gotham.New()
+	router.Use(Recovery(l))
 	InitHandlers(router, db, l)
 }
 
@@ -79,35 +79,28 @@ func (rw *ResponseRecorder) Write(message proto.Message) error {
 	return nil
 }
 
-func TestRegisterHandler(t *testing.T) {
+func TestInitHandlers(t *testing.T) {
+	doOnce.Do(initTest)
+	assert.Len(t, router.Routes(), 2)
+}
+
+func TestNoRouter(t *testing.T) {
 	doOnce.Do(initTest)
 
-	uuid := shortuuid.New()
-	msgA := &pbs.Register{
-		Username: uuid,
-		Email:    uuid + "@goblin.com",
+	msgC := &pbs.Login{
+		Username: "aspirin",
 		Password: "Password!",
 	}
-
-	tu := proto.MessageName(msgA)
-	data, _ := proto.Marshal(msgA)
-
+	// typeurl := proto.MessageName(msgC)
+	data, _ := proto.Marshal(msgC)
 	req := &gotham.Request{
-		TypeURL: tu,
-		Data:    data,
+		TypeURL: "abc",
+		Data:    data, //invalid data
 	}
 
 	rw := &ResponseRecorder{keepAlive: true}
 	router.ServeProto(rw, req)
-
-	msgB, _ := rw.message.(*pbs.RegisterAck)
-	assert.Nil(t, msgB.GetError())
-	assert.Greater(t, len(msgB.GetToken()), 0)
-	assert.True(t, rw.KeepAlive())
-
-	// register again with same username
-	router.ServeProto(rw, req)
-	msgB, _ = rw.message.(*pbs.RegisterAck)
-	assert.Equal(t, MsgUserAlreadyExisted, msgB.GetError())
+	msgD, _ := rw.message.(*pbs.Error)
+	assert.Equal(t, MsgRouterNotFound.GetCode(), msgD.GetCode())
 	assert.False(t, rw.KeepAlive())
 }
